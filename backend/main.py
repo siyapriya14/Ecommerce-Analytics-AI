@@ -22,6 +22,8 @@ class UserDB(Base):
     email = Column(String, unique=True, index=True)
     password = Column(String)
 
+# Drop and recreate tables to avoid schema mismatch errors
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="E-Commerce Analytics & AI Platform")
