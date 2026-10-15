@@ -35,18 +35,22 @@ export default function App() {
   const handleAuth = async (e) => {
     e.preventDefault();
     const endpoint = isSignup ? '/api/signup' : '/api/login';
+    const payload = isSignup ? { email: username, password } : { username, password };
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Auth failed");
+      if (!res.ok) {
+        const msg = typeof data.detail === 'object' ? JSON.stringify(data.detail) : (data.detail || "Auth failed");
+        throw new Error(msg);
+      }
       
       if (!isSignup) {
-        localStorage.setItem('jwt_token', data.token);
-        setToken(data.token);
+        localStorage.setItem('jwt_token', data.token || data.access_token);
+        setToken(data.token || data.access_token);
       } else {
         alert("Signup successful! Please login.");
         setIsSignup(false);
@@ -105,7 +109,7 @@ export default function App() {
           </div>
           <form onSubmit={handleAuth} className="space-y-4">
             <input 
-              type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)}
+              type="text" placeholder="Username / Email" value={username} onChange={e => setUsername(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none" required
             />
             <input 
@@ -124,7 +128,7 @@ export default function App() {
     );
   }
 
-  const categoryChartData = analytics ? Object.entries(analytics.category_breakdown).map(([name, sales]) => ({ name, sales })) : [];
+  const categoryChartData = analytics && analytics.categories ? analytics.categories.map(cat => ({ name: cat.name, sales: cat.sales })) : [];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-6 md:p-10">
@@ -157,12 +161,12 @@ export default function App() {
               <h2 className="text-3xl font-extrabold mt-3 text-white">₹{analytics.total_sales.toLocaleString()}</h2>
             </div>
             <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl">
-              <span className="text-slate-400 text-sm font-medium">Average Order Value</span>
-              <h2 className="text-3xl font-extrabold mt-3 text-white">₹{analytics.average_order_value}</h2>
+              <span className="text-slate-400 text-sm font-medium">Monthly Growth</span>
+              <h2 className="text-3xl font-extrabold mt-3 text-emerald-400">{analytics.monthly_growth}</h2>
             </div>
             <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl">
-              <span className="text-slate-400 text-sm font-medium">Total Orders Tracked</span>
-              <h2 className="text-3xl font-extrabold mt-3 text-white">{analytics.total_orders}</h2>
+              <span className="text-slate-400 text-sm font-medium">Active Orders Tracked</span>
+              <h2 className="text-3xl font-extrabold mt-3 text-white">{analytics.active_orders}</h2>
             </div>
           </div>
         ) : (
@@ -171,20 +175,6 @@ export default function App() {
 
         {analytics && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Sales Trend Analysis</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics.sales_trend}>
-                    <XAxis dataKey="order_id" stroke="#64748b" />
-                    <YAxis stroke="#64748b" />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
-                    <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={3} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
             <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl">
               <h3 className="text-lg font-semibold text-white mb-4">Category Revenue Distribution</h3>
               <div className="h-64">
@@ -200,68 +190,6 @@ export default function App() {
             </div>
           </div>
         )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <PlusCircle className="text-emerald-400 w-5 h-5" /> Add Live Order / Transaction
-              </h3>
-              <form onSubmit={handleAddOrder} className="space-y-4">
-                <select 
-                  value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
-                >
-                  <option value="Electronics">Electronics</option>
-                  <option value="Clothing">Clothing</option>
-                  <option value="Home">Home Appliances</option>
-                </select>
-                <input 
-                  type="number" value={newSales} onChange={(e) => setNewSales(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
-                  placeholder="Sales Amount (₹)..." required
-                />
-                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium cursor-pointer transition">
-                  {submittingOrder ? "Saving to SQLite..." : "Add Order & Update Dashboard"}
-                </button>
-              </form>
-            </div>
-
-            {successMsg && (
-              <div className="mt-4 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Order successfully saved in SQLite database!
-              </div>
-            )}
-          </div>
-
-          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Scikit-Learn Joblib Predictive Engine</h3>
-              <form onSubmit={handlePredict} className="space-y-4">
-                <input 
-                  type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)}
-                  className="w-0.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
-                  placeholder="Target Units..." required
-                />
-                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium cursor-pointer transition">
-                  {loading ? "Running Joblib Model..." : "Execute AI Revenue Prediction"}
-                </button>
-              </form>
-            </div>
-
-            {prediction !== null && (
-              <div className="mt-6 bg-slate-950 border border-indigo-500/30 p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 uppercase tracking-wider">Predicted Yield (Joblib Model)</span>
-                  <div className="text-2xl font-bold text-emerald-400 mt-0.5">₹{prediction.toLocaleString()}</div>
-                </div>
-                <div className="bg-emerald-500/10 text-emerald-400 text-xs px-3 py-1.5 rounded-full font-medium border border-emerald-500/20 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Model Verified
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </main>
     </div>
   );
