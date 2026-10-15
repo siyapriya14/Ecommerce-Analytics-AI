@@ -101,3 +101,18 @@ def predict_revenue(data: PredictionInput):
 frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
 if os.path.exists(frontend_dist):
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
+    from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+# Frontend dist folder path
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
+
+if os.path.exists(frontend_dist):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    
+    @app.get("/{full_path:path}")
+    async def serve_react(full_path: str):
+        if full_path.startswith("api/"):
+            return {"detail": "API endpoint not found"}, 404
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
