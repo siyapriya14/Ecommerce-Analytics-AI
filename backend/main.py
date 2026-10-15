@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy import create_engine, Column, Integer, String, Float, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -28,7 +28,12 @@ class OrderDB(Base):
     category = Column(String)
     sales = Column(Float)
 
-# Create tables cleanly
+# Smart auto-migration check: Recreate tables only if schema mismatch occurs
+inspector = inspect(engine)
+if "users" in inspector.get_table_names():
+    columns = [c["name"] for c in inspector.get_columns("users")]
+    if "email" not in columns:
+        Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="E-Commerce Analytics & AI Platform")
