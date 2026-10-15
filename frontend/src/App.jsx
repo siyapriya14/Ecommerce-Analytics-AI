@@ -20,7 +20,7 @@ export default function App() {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/analytics');
+      const res = await fetch('/api/analytics');
       const data = await res.json();
       setAnalytics(data);
     } catch (err) {
@@ -36,7 +36,7 @@ export default function App() {
     e.preventDefault();
     const endpoint = isSignup ? '/api/signup' : '/api/login';
     try {
-      const res = await fetch(`http://localhost:8000${endpoint}`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -66,7 +66,7 @@ export default function App() {
     if (!quantity) return;
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/predict/${quantity}`);
+      const res = await fetch(`/api/predict/${quantity}`);
       const data = await res.json();
       setPrediction(data.predicted_revenue);
     } finally {
@@ -80,7 +80,7 @@ export default function App() {
     setSubmittingOrder(true);
 
     try {
-      const res = await fetch('http://localhost:8000/api/orders', {
+      const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category: newCategory, sales: Number(newSales) })
@@ -140,7 +140,7 @@ export default function App() {
           <p className="text-slate-400 text-sm mt-1">Powered by FastAPI, SQLite, Scikit-Learn Joblib & React</p>
         </div>
         <div className="flex items-center gap-3 mt-4 md:mt-0">
-          <a href="http://localhost:8000/api/export" target="_blank" rel="noreferrer" className="bg-slate-900 hover:bg-slate-800 border border-slate-800 px-4 py-2 rounded-xl text-xs text-emerald-400 font-medium flex items-center gap-2 shadow-sm">
+          <a href="/api/export" target="_blank" rel="noreferrer" className="bg-slate-900 hover:bg-slate-800 border border-slate-800 px-4 py-2 rounded-xl text-xs text-emerald-400 font-medium flex items-center gap-2 shadow-sm">
             <Download className="w-4 h-4" /> Export Report
           </a>
           <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 px-3 py-2 rounded-xl text-xs text-red-400 font-medium flex items-center gap-2">
@@ -240,7 +240,7 @@ export default function App() {
               <form onSubmit={handlePredict} className="space-y-4">
                 <input 
                   type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
+                  className="w-0.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
                   placeholder="Target Units..." required
                 />
                 <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium cursor-pointer transition">
