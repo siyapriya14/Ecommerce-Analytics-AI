@@ -85,7 +85,11 @@ def login(credentials: UserCredentials, db: Session = Depends(get_db)):
 
 @app.get("/api/analytics")
 def get_analytics(db: Session = Depends(get_db)):
-    orders = db.query(OrderDB).all()
+    try:
+        orders = db.query(OrderDB).all()
+    except Exception:
+        orders = []
+        
     base_sales = 142580
     base_orders = 342
     
