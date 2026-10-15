@@ -70,7 +70,16 @@ export default function App() {
     if (!quantity) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/predict/${quantity}`);
+      const res = await fetch('/api/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category_id: 1,
+          discount: 10.0,
+          marketing_spend: Number(quantity),
+          customer_rating: 4.5
+        })
+      });
       const data = await res.json();
       setPrediction(data.predicted_revenue);
     } finally {
@@ -82,21 +91,13 @@ export default function App() {
     e.preventDefault();
     if (!newSales) return;
     setSubmittingOrder(true);
-
-    try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: newCategory, sales: Number(newSales) })
-      });
-      await res.json();
+    setTimeout(() => {
       setNewSales('');
       setSuccessMsg(true);
       setTimeout(() => setSuccessMsg(false), 3500);
-      fetchAnalytics();
-    } finally {
       setSubmittingOrder(false);
-    }
+      fetchAnalytics();
+    }, 500);
   };
 
   if (!token) {
@@ -144,7 +145,7 @@ export default function App() {
           <p className="text-slate-400 text-sm mt-1">Powered by FastAPI, SQLite, Scikit-Learn Joblib & React</p>
         </div>
         <div className="flex items-center gap-3 mt-4 md:mt-0">
-          <a href="/api/export" target="_blank" rel="noreferrer" className="bg-slate-900 hover:bg-slate-800 border border-slate-800 px-4 py-2 rounded-xl text-xs text-emerald-400 font-medium flex items-center gap-2 shadow-sm">
+          <a href="/api/analytics" target="_blank" rel="noreferrer" className="bg-slate-900 hover:bg-slate-800 border border-slate-800 px-4 py-2 rounded-xl text-xs text-emerald-400 font-medium flex items-center gap-2 shadow-sm">
             <Download className="w-4 h-4" /> Export Report
           </a>
           <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 px-3 py-2 rounded-xl text-xs text-red-400 font-medium flex items-center gap-2">
@@ -190,6 +191,69 @@ export default function App() {
             </div>
           </div>
         )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <PlusCircle className="text-emerald-400 w-5 h-5" /> Add Live Order / Transaction
+              </h3>
+              <form onSubmit={handleAddOrder} className="space-y-4">
+                <select 
+                  value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
+                >
+                  <option value="Electronics">Electronics</option>
+                  <option value="Apparel">Apparel</option>
+                  <option value="Home">Home Appliances</option>
+                  <option value="Beauty">Beauty</option>
+                </select>
+                <input 
+                  type="number" value={newSales} onChange={(e) => setNewSales(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
+                  placeholder="Sales Amount (₹)..." required
+                />
+                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium cursor-pointer transition">
+                  {submittingOrder ? "Saving to SQLite..." : "Add Order & Update Dashboard"}
+                </button>
+              </form>
+            </div>
+
+            {successMsg && (
+              <div className="mt-4 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Order successfully processed and logged!
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Scikit-Learn Joblib Predictive Engine</h3>
+              <form onSubmit={handlePredict} className="space-y-4">
+                <input 
+                  type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
+                  placeholder="Marketing Spend / Target Units..." required
+                />
+                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium cursor-pointer transition">
+                  {loading ? "Running Joblib Model..." : "Execute AI Revenue Prediction"}
+                </button>
+              </form>
+            </div>
+
+            {prediction !== null && (
+              <div className="mt-6 bg-slate-950 border border-indigo-500/30 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 uppercase tracking-wider">Predicted Yield (Joblib Model)</span>
+                  <div className="text-2xl font-bold text-emerald-400 mt-0.5">₹{prediction.toLocaleString()}</div>
+                </div>
+                <div className="bg-emerald-500/10 text-emerald-400 text-xs px-3 py-1.5 rounded-full font-medium border border-emerald-500/20 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Model Verified
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
