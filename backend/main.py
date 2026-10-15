@@ -1,24 +1,21 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
-from datetime import datetime, timedelta
-import joblib
-import pandas as pd
 import os
 
-# Database Setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./ecommerce.db"
+# Absolute path for SQLite database on Render
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'ecommerce.db')}"
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# User Model
 class UserDB(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -29,7 +26,6 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="E-Commerce Analytics & AI Platform")
 
-# CORS Setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,7 +34,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -46,7 +41,6 @@ def get_db():
     finally:
         db.close()
 
-# Schemas
 class UserSignup(BaseModel):
     email: str
     password: str
@@ -61,24 +55,29 @@ class PredictionInput(BaseModel):
     marketing_spend: float
     customer_rating: float
 
-# API Routes
 @app.post("/api/signup")
 def signup(user: UserSignup, db: Session = Depends(get_db)):
-    db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = UserDB(email=user.email, password=user.password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"message": "User created successfully"}
+    try:
+        db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
+        if db_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        new_user = UserDB(email=user.email, password=user.password)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {"message": "User created successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/login")
 def login(credentials: UserCredentials, db: Session = Depends(get_db)):
-    user = db.query(UserDB).filter(UserDB.email == credentials.username).first()
-    if not user or user.password != credentials.password:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return {"access_token": user.email, "token_type": "bearer"}
+    try:
+        user = db.query(UserDB).filter(UserDB.email == credentials.username).first()
+        if not user or user.password != credentials.password:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        return {"access_token": user.email, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/analytics")
 def get_analytics():
