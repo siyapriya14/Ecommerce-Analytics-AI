@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -56,8 +57,8 @@ class PredictionInput(BaseModel):
     marketing_spend: float
     customer_rating: float
 
-# Routes
-@app.post("/signup")
+# API Routes
+@app.post("/api/signup")
 def signup(user: UserSignup, db: Session = Depends(get_db)):
     db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
     if db_user:
@@ -68,7 +69,7 @@ def signup(user: UserSignup, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return {"message": "User created successfully"}
 
-@app.post("/login")
+@app.post("/api/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(UserDB).filter(UserDB.email == form_data.username).first()
     if not user or user.password != form_data.password:
@@ -77,7 +78,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @app.get("/api/analytics")
 def get_analytics():
-    # Sample analytics data for dashboard
     return {
         "total_sales": 142580,
         "monthly_growth": "+18.4%",
@@ -93,21 +93,11 @@ def get_analytics():
 
 @app.post("/api/predict")
 def predict_revenue(data: PredictionInput):
-    # ML Inference simulation / model prediction
     predicted_val = (data.marketing_spend * 1.8) + (data.customer_rating * 5000) - (data.discount * 1000) + 12000
     return {"predicted_revenue": max(round(predicted_val, 2), 1000.0)}
 
-# Mount Frontend Build for Single-Service Deployment
+# Mount Frontend Build (Must be at the very bottom)
 frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
-if os.path.exists(frontend_dist):
-    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
-    from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import os
-
-# Frontend dist folder path
-frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
-
 if os.path.exists(frontend_dist):
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
     
