@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -51,6 +51,10 @@ class UserSignup(BaseModel):
     email: str
     password: str
 
+class UserCredentials(BaseModel):
+    username: str
+    password: str
+
 class PredictionInput(BaseModel):
     category_id: int
     discount: float
@@ -70,9 +74,9 @@ def signup(user: UserSignup, db: Session = Depends(get_db)):
     return {"message": "User created successfully"}
 
 @app.post("/api/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(UserDB).filter(UserDB.email == form_data.username).first()
-    if not user or user.password != form_data.password:
+def login(credentials: UserCredentials, db: Session = Depends(get_db)):
+    user = db.query(UserDB).filter(UserDB.email == credentials.username).first()
+    if not user or user.password != credentials.password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     return {"access_token": user.email, "token_type": "bearer"}
 
