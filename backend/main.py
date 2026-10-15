@@ -122,9 +122,8 @@ def predict_revenue(data: PredictionInput):
     predicted_val = (data.marketing_spend * 1.8) + (data.customer_rating * 5000) - (data.discount * 1000) + 12000
     return {"predicted_revenue": max(round(predicted_val, 2), 1000.0)}
 
-# Mount Frontend Build (Must be at the very bottom)
+# Mount Frontend Build
 frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
-if os.paths.exists if hasattr(os.path, 'path') and os.path.exists(frontend_dist): pass
 if os.path.exists(frontend_dist):
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
     
