@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -22,8 +22,12 @@ class UserDB(Base):
     email = Column(String, unique=True, index=True)
     password = Column(String)
 
-# Drop and recreate tables to avoid schema mismatch errors
-Base.metadata.drop_all(bind=engine)
+class OrderDB(Base):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String)
+    sales = Column(Float)
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="E-Commerce Analytics & AI Platform")
@@ -51,6 +55,10 @@ class UserCredentials(BaseModel):
     username: str
     password: str
 
+class OrderInput(BaseModel):
+    category: str
+    sales: float
+
 class PredictionInput(BaseModel):
     category_id: int
     discount: float
@@ -59,42 +67,51 @@ class PredictionInput(BaseModel):
 
 @app.post("/api/signup")
 def signup(user: UserSignup, db: Session = Depends(get_db)):
-    try:
-        db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
-        if db_user:
-            raise HTTPException(status_code=400, detail="Email already registered")
-        new_user = UserDB(email=user.email, password=user.password)
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        return {"message": "User created successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    new_user = UserDB(email=user.email, password=user.password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "User created successfully"}
 
 @app.post("/api/login")
 def login(credentials: UserCredentials, db: Session = Depends(get_db)):
-    try:
-        user = db.query(UserDB).filter(UserDB.email == credentials.username).first()
-        if not user or user.password != credentials.password:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-        return {"access_token": user.email, "token_type": "bearer"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    user = db.query(UserDB).filter(UserDB.email == credentials.username).first()
+    if not user or user.password != credentials.password:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    return {"access_token": user.email, "token_type": "bearer"}
 
 @app.get("/api/analytics")
-def get_analytics():
+def get_analytics(db: Session = Depends(get_db)):
+    orders = db.query(OrderDB).all()
+    base_sales = 142580
+    base_orders = 342
+    
+    total_sales = base_sales + sum(o.sales for o in orders)
+    total_orders = base_orders + len(orders)
+    
+    category_breakdown = {"Electronics": 45000, "Apparel": 32000, "Home & Kitchen": 28000, "Beauty": 22000, "Sports": 15580}
+    for o in orders:
+        category_breakdown[o.category] = category_breakdown.get(o.category, 0) + o.sales
+
+    categories = [{"name": k, "sales": v} for k, v in category_breakdown.items()]
+
     return {
-        "total_sales": 142580,
+        "total_sales": total_sales,
         "monthly_growth": "+18.4%",
-        "active_orders": 342,
-        "categories": [
-            {"name": "Electronics", "sales": 45000},
-            {"name": "Apparel", "sales": 32000},
-            {"name": "Home & Kitchen", "sales": 28000},
-            {"name": "Beauty", "sales": 22000},
-            {"name": "Sports", "sales": 15580}
-        ]
+        "active_orders": total_orders,
+        "categories": categories
     }
+
+@app.post("/api/orders")
+def add_order(order: OrderInput, db: Session = Depends(get_db)):
+    new_order = OrderDB(category=order.category, sales=order.sales)
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+    return {"message": "Order added successfully"}
 
 @app.post("/api/predict")
 def predict_revenue(data: PredictionInput):

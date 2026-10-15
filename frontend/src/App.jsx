@@ -91,13 +91,21 @@ export default function App() {
     e.preventDefault();
     if (!newSales) return;
     setSubmittingOrder(true);
-    setTimeout(() => {
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: newCategory, sales: Number(newSales) })
+      });
+      await res.json();
       setNewSales('');
       setSuccessMsg(true);
       setTimeout(() => setSuccessMsg(false), 3500);
-      setSubmittingOrder(false);
       fetchAnalytics();
-    }, 500);
+    } finally {
+      setSubmittingOrder(false);
+    }
   };
 
   if (!token) {
@@ -205,8 +213,9 @@ export default function App() {
                 >
                   <option value="Electronics">Electronics</option>
                   <option value="Apparel">Apparel</option>
-                  <option value="Home">Home Appliances</option>
+                  <option value="Home & Kitchen">Home & Kitchen</option>
                   <option value="Beauty">Beauty</option>
+                  <option value="Sports">Sports</option>
                 </select>
                 <input 
                   type="number" value={newSales} onChange={(e) => setNewSales(e.target.value)}
@@ -221,7 +230,7 @@ export default function App() {
 
             {successMsg && (
               <div className="mt-4 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Order successfully processed and logged!
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Order successfully saved in SQLite database!
               </div>
             )}
           </div>
