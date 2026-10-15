@@ -28,6 +28,7 @@ class OrderDB(Base):
     category = Column(String)
     sales = Column(Float)
 
+# Create tables cleanly
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="E-Commerce Analytics & AI Platform")
@@ -67,21 +68,31 @@ class PredictionInput(BaseModel):
 
 @app.post("/api/signup")
 def signup(user: UserSignup, db: Session = Depends(get_db)):
-    db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = UserDB(email=user.email, password=user.password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"message": "User created successfully"}
+    try:
+        db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
+        if db_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        new_user = UserDB(email=user.email, password=user.password)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {"message": "User created successfully"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/login")
 def login(credentials: UserCredentials, db: Session = Depends(get_db)):
-    user = db.query(UserDB).filter(UserDB.email == credentials.username).first()
-    if not user or user.password != credentials.password:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return {"access_token": user.email, "token_type": "bearer"}
+    try:
+        user = db.query(UserDB).filter(UserDB.email == credentials.username).first()
+        if not user or user.password != credentials.password:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        return {"access_token": user.email, "token_type": "bearer"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/analytics")
 def get_analytics(db: Session = Depends(get_db)):
@@ -111,11 +122,14 @@ def get_analytics(db: Session = Depends(get_db)):
 
 @app.post("/api/orders")
 def add_order(order: OrderInput, db: Session = Depends(get_db)):
-    new_order = OrderDB(category=order.category, sales=order.sales)
-    db.add(new_order)
-    db.commit()
-    db.refresh(new_order)
-    return {"message": "Order added successfully"}
+    try:
+        new_order = OrderDB(category=order.category, sales=order.sales)
+        db.add(new_order)
+        db.commit()
+        db.refresh(new_order)
+        return {"message": "Order added successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/predict")
 def predict_revenue(data: PredictionInput):
