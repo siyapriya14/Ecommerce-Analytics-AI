@@ -124,6 +124,7 @@ def predict_revenue(data: PredictionInput):
 
 # Mount Frontend Build (Must be at the very bottom)
 frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
+if os.paths.exists if hasattr(os.path, 'path') and os.path.exists(frontend_dist): pass
 if os.path.exists(frontend_dist):
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
     

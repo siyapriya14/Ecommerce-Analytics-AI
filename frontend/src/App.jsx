@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, ShoppingBag, DollarSign, Cpu, BarChart3, ShieldCheck, PlusCircle, CheckCircle2, Download, LogOut, Lock } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('jwt_token') || null);
@@ -9,9 +9,11 @@ export default function App() {
   const [password, setPassword] = useState('');
   
   const [analytics, setAnalytics] = useState(null);
-  const [quantity, setQuantity] = useState('');
+  const [marketingSpend, setMarketingSpend] = useState('');
+  const [discount, setDiscount] = useState('');
+  const [rating, setRating] = useState('');
   const [prediction, setPrediction] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingPred, setLoadingPred] = useState(false);
 
   const [newCategory, setNewCategory] = useState('Electronics');
   const [newSales, setNewSales] = useState('');
@@ -67,23 +69,23 @@ export default function App() {
 
   const handlePredict = async (e) => {
     e.preventDefault();
-    if (!quantity) return;
-    setLoading(true);
+    if (!marketingSpend) return;
+    setLoadingPred(true);
     try {
       const res = await fetch('/api/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category_id: 1,
-          discount: 10.0,
-          marketing_spend: Number(quantity),
-          customer_rating: 4.5
+          discount: Number(discount) || 10.0,
+          marketing_spend: Number(marketingSpend),
+          customer_rating: Number(rating) || 4.5
         })
       });
       const data = await res.json();
       setPrediction(data.predicted_revenue);
     } finally {
-      setLoading(false);
+      setLoadingPred(false);
     }
   };
 
@@ -183,19 +185,18 @@ export default function App() {
         )}
 
         {analytics && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Category Revenue Distribution</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryChartData}>
-                    <XAxis dataKey="name" stroke="#64748b" />
-                    <YAxis stroke="#64748b" />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
-                    <Bar dataKey="sales" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl">
+            <h3 className="text-lg font-semibold text-white mb-4">Category Revenue Distribution</h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="name" stroke="#64748b" />
+                  <YAxis stroke="#64748b" />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
+                  <Bar dataKey="sales" fill="#6366f1" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
@@ -209,7 +210,7 @@ export default function App() {
               <form onSubmit={handleAddOrder} className="space-y-4">
                 <select 
                   value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500"
                 >
                   <option value="Electronics">Electronics</option>
                   <option value="Apparel">Apparel</option>
@@ -219,10 +220,10 @@ export default function App() {
                 </select>
                 <input 
                   type="number" value={newSales} onChange={(e) => setNewSales(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500"
                   placeholder="Sales Amount (₹)..." required
                 />
-                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium cursor-pointer transition">
+                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium cursor-pointer transition shadow-lg shadow-emerald-900/20">
                   {submittingOrder ? "Saving to SQLite..." : "Add Order & Update Dashboard"}
                 </button>
               </form>
@@ -230,7 +231,7 @@ export default function App() {
 
             {successMsg && (
               <div className="mt-4 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Order successfully saved in SQLite database!
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Order successfully saved and dashboard updated!
               </div>
             )}
           </div>
@@ -238,20 +239,32 @@ export default function App() {
           <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-semibold text-white mb-4">Scikit-Learn Joblib Predictive Engine</h3>
-              <form onSubmit={handlePredict} className="space-y-4">
+              <form onSubmit={handlePredict} className="space-y-3">
                 <input 
-                  type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none"
-                  placeholder="Marketing Spend / Target Units..." required
+                  type="number" value={marketingSpend} onChange={(e) => setMarketingSpend(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 text-sm"
+                  placeholder="Marketing Spend (₹)..." required
                 />
-                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium cursor-pointer transition">
-                  {loading ? "Running Joblib Model..." : "Execute AI Revenue Prediction"}
+                <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    type="number" value={discount} onChange={(e) => setDiscount(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 text-sm"
+                    placeholder="Discount % (e.g. 10)"
+                  />
+                  <input 
+                    type="number" step="0.1" value={rating} onChange={(e) => setRating(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 text-sm"
+                    placeholder="Customer Rating (1-5)"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium cursor-pointer transition shadow-lg shadow-indigo-900/20">
+                  {loadingPred ? "Running Joblib Model..." : "Execute AI Revenue Prediction"}
                 </button>
               </form>
             </div>
 
             {prediction !== null && (
-              <div className="mt-6 bg-slate-950 border border-indigo-500/30 p-4 rounded-xl flex items-center justify-between">
+              <div className="mt-4 bg-slate-950 border border-indigo-500/30 p-4 rounded-xl flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider">Predicted Yield (Joblib Model)</span>
                   <div className="text-2xl font-bold text-emerald-400 mt-0.5">₹{prediction.toLocaleString()}</div>
